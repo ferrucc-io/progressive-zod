@@ -1,7 +1,7 @@
 import { _setStorageFactory } from "./resolve.js";
 import { MemoryStorage } from "./memory.js";
 
-// Register server storage factory — supports all backends including Redis
+// Register client storage factory — no Redis (avoids bundling ioredis)
 _setStorageFactory(async (config, userConfig) => {
   if (config.storage === "amplitude") {
     if (!userConfig.amplitudeClient) {
@@ -13,9 +13,10 @@ _setStorageFactory(async (config, userConfig) => {
     const { AmplitudeStorage } = await import("./amplitude.js");
     return new AmplitudeStorage(userConfig.amplitudeClient, config);
   } else if (config.storage === "redis") {
-    // Dynamic import so ioredis isn't loaded unless needed
-    const { RedisStorage } = await import("./redis.js");
-    return new RedisStorage(config);
+    throw new Error(
+      'progressive-zod: Redis storage is not available in the client bundle. ' +
+      'Import from "progressive-zod" instead of "progressive-zod/client".',
+    );
   }
 
   return new MemoryStorage(config);
