@@ -1,6 +1,6 @@
 {
   "name": "progressive-zod",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Runtime type observability for TypeScript — progressively replace `any` with real Zod schemas",
   "type": "module",
   "main": "dist/index.cjs",
@@ -40,6 +40,10 @@
     "inference",
     "progressive"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ferrucc-io/progressive-zod"
+  },
   "license": "MIT",
   "dependencies": {
     "commander": "^14.0.0"
