@@ -1,0 +1,48 @@
+{
+  "name": "progressive-zod",
+  "version": "0.1.0",
+  "description": "Runtime type observability for TypeScript — progressively replace `any` with real Zod schemas",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "progressive-zod": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "files": [
+    "dist",
+    ".claude/commands"
+  ],
+  "keywords": [
+    "zod",
+    "typescript",
+    "runtime",
+    "observability",
+    "schema",
+    "inference",
+    "progressive"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "commander": "^14.0.0",
+    "zod": "^3.23.0"
+  },
+  "peerDependencies": {
+    "ioredis": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ioredis": "^5.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
