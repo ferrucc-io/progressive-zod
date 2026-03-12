@@ -35,7 +35,8 @@
     "build": "tsup",
     "test": "vitest run",
     "prepublishOnly": "npm run build",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release:minor": "./scripts/release-minor.sh"
   },
   "files": [
     "dist",
