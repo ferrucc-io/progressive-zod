@@ -30,6 +30,19 @@ export interface AmplitudeClient {
  * Read methods (getNames, getSamples, etc.) are no-ops — use the
  * Amplitude dashboard to query your data.
  */
+/**
+ * Convert a value into a flat "key=value; ..." string so Amplitude
+ * treats it as an opaque string instead of exploding JSON keys into
+ * separate event properties.
+ */
+function flattenToString(value: unknown): string {
+  if (value === null || value === undefined) return String(value);
+  if (typeof value !== "object") return String(value);
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  const entries = Object.entries(value as Record<string, unknown>);
+  return entries.map(([k, v]) => `${k}=${JSON.stringify(v)}`).join("; ");
+}
+
 export class AmplitudeStorage implements StorageBackend {
   private readonly client: AmplitudeClient;
   private readonly deviceId: string;
@@ -76,7 +89,8 @@ export class AmplitudeStorage implements StorageBackend {
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           properties.field_count = Object.keys(parsed).length;
         }
-        properties.sample_preview = sample.slice(0, 256);
+        // Flatten to key=value pairs so Amplitude doesn't explode JSON into N properties
+        properties.sample_preview = flattenToString(parsed).slice(0, 256);
       } catch {
         properties.sample_type = "unknown";
         properties.sample_preview = sample.slice(0, 256);

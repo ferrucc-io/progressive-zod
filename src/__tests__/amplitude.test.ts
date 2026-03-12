@@ -57,6 +57,31 @@ describe("AmplitudeStorage", () => {
     });
   });
 
+  it("flattens sample_preview to a non-JSON string", () => {
+    const sample = JSON.stringify({ name: "Alice", age: 30, nested: { x: 1 } });
+    storage.incrViolate("UserPayload", sample);
+    const props = client.events[0].properties!;
+    expect(props.sample_preview).toBe('name="Alice"; age=30; nested={"x":1}');
+    expect(props.sample_type).toBe("object");
+    expect(props.field_count).toBe(3);
+  });
+
+  it("handles array samples in sample_preview", () => {
+    const sample = JSON.stringify([1, 2, 3]);
+    storage.incrViolate("UserPayload", sample);
+    const props = client.events[0].properties!;
+    expect(props.sample_preview).toBe("1, 2, 3");
+    expect(props.sample_type).toBe("object");
+  });
+
+  it("handles primitive samples in sample_preview", () => {
+    const sample = JSON.stringify("hello");
+    storage.incrViolate("UserPayload", sample);
+    const props = client.events[0].properties!;
+    expect(props.sample_preview).toBe("hello");
+    expect(props.sample_type).toBe("string");
+  });
+
   it("uses device_id based on keyPrefix", () => {
     storage.incrConform("Test");
     expect(client.events[0].options).toEqual({ device_id: "pzod:test:" });
