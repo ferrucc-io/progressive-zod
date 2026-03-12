@@ -20,7 +20,10 @@ export class RedisStorage implements StorageBackend {
     if (!this.redis) {
       let Redis: any;
       try {
-        Redis = (await import("ioredis")).default;
+        // Use a variable to prevent consuming bundlers (e.g. Vite) from
+        // statically resolving this optional peer dependency.
+        const moduleName = "ioredis";
+        Redis = (await import(moduleName)).default;
       } catch {
         throw new Error(
           "ioredis is required for Redis storage. Install it with: npm install ioredis",
