@@ -30,14 +30,21 @@ export function configure(config: ProgressiveConfig): void {
   }
 }
 
+function env(key: string): string | undefined {
+  if (typeof process !== "undefined" && process.env) {
+    return process.env[key];
+  }
+  return undefined;
+}
+
 export function getConfig(): ProgressiveConfig {
   return {
-    storage: currentConfig.storage ?? (process.env.PROGRESSIVE_ZOD_STORAGE as any) ?? "memory",
-    redisUrl: currentConfig.redisUrl ?? process.env.PROGRESSIVE_ZOD_REDIS_URL,
-    keyPrefix: currentConfig.keyPrefix ?? process.env.PROGRESSIVE_ZOD_KEY_PREFIX ?? "pzod:",
-    maxViolations: currentConfig.maxViolations ?? parseInt(process.env.PROGRESSIVE_ZOD_MAX_VIOLATIONS ?? "1000", 10),
-    maxSamples: currentConfig.maxSamples ?? parseInt(process.env.PROGRESSIVE_ZOD_MAX_SAMPLES ?? "1000", 10),
-    dataDir: currentConfig.dataDir ?? process.env.PROGRESSIVE_ZOD_DATA_DIR ?? ".progressive-zod",
+    storage: currentConfig.storage ?? (env("PROGRESSIVE_ZOD_STORAGE") as any) ?? "memory",
+    redisUrl: currentConfig.redisUrl ?? env("PROGRESSIVE_ZOD_REDIS_URL"),
+    keyPrefix: currentConfig.keyPrefix ?? env("PROGRESSIVE_ZOD_KEY_PREFIX") ?? "pzod:",
+    maxViolations: currentConfig.maxViolations ?? parseInt(env("PROGRESSIVE_ZOD_MAX_VIOLATIONS") ?? "1000", 10),
+    maxSamples: currentConfig.maxSamples ?? parseInt(env("PROGRESSIVE_ZOD_MAX_SAMPLES") ?? "1000", 10),
+    dataDir: currentConfig.dataDir ?? env("PROGRESSIVE_ZOD_DATA_DIR"),
   };
 }
 
