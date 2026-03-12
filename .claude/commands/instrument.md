@@ -27,7 +27,11 @@ Search for code patterns that handle data without runtime validation:
 For each boundary found, add a `progressive()` call. Use descriptive names that identify the boundary.
 
 ```typescript
+// Server-side code (Node.js, Express, etc.)
 import { progressive } from "progressive-zod";
+
+// Frontend code (Vite, Next.js client, etc.)
+import { progressive } from "progressive-zod/client";
 
 // Before: untyped
 const data = req.body;
@@ -44,10 +48,14 @@ const data = UserCreate.parse(req.body);
 
 ### 3. Ensure progressive-zod is configured
 
-If there's no existing setup, add this to the app's entry point:
+If there's no existing setup, add configuration to the app's entry point. Use the right import path based on the environment:
 
 ```typescript
+// Server-side (Node.js, Express, etc.)
 import { configure } from "progressive-zod";
+
+// Frontend (Vite, Next.js client, etc.) — avoids bundling ioredis
+import { configure } from "progressive-zod/client";
 
 // For localhost development — no Redis needed
 configure({
@@ -55,6 +63,8 @@ configure({
   dataDir: ".progressive-zod",
 });
 ```
+
+**Important:** In frontend/browser code, always use `progressive-zod/client` to avoid bundler errors from server-only dependencies (ioredis). The client entry supports memory and Amplitude storage but not Redis.
 
 Add `.progressive-zod/` to `.gitignore` if not already there.
 
@@ -75,6 +85,7 @@ After instrumenting, summarize:
 - **progressive() never throws** — it always returns input unchanged, so it's safe to add anywhere
 - **Be conservative** — only instrument clear untyped boundaries, don't wrap already-typed internal code
 - **One progressive() per boundary** — don't double-wrap
+- **Use the right import path** — use `progressive-zod/client` in frontend/browser code (Vite, Next.js client components, etc.) and `progressive-zod` in server-side code. The client entry excludes Redis to avoid bundler errors.
 - If the user already has Zod schemas for some boundaries, pass them as the second argument:
   ```typescript
   const UserCreate = progressive("UserCreate", existingUserSchema);

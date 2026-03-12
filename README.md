@@ -28,6 +28,16 @@ app.post("/users", (req, res) => {
 });
 ```
 
+### Using in a frontend (Vite, Next.js, etc.)
+
+If you're bundling with Vite or another frontend bundler, import from the client entry point to avoid pulling in server-only dependencies like `ioredis`:
+
+```typescript
+import { progressive } from "progressive-zod/client";
+```
+
+The client entry supports memory and Amplitude storage. If you need Redis, use the server entry (`progressive-zod`).
+
 Run your app, hit some endpoints, then:
 
 ```bash
@@ -113,7 +123,7 @@ This package includes a `/instrument` skill for [Claude Code](https://docs.anthr
 
 | Option | Env var | Default | Description |
 |--------|---------|---------|-------------|
-| `storage` | `PROGRESSIVE_ZOD_STORAGE` | `"memory"` | `"memory"` or `"redis"` |
+| `storage` | `PROGRESSIVE_ZOD_STORAGE` | `"memory"` | `"memory"`, `"redis"`, or `"amplitude"` |
 | `redisUrl` | `PROGRESSIVE_ZOD_REDIS_URL` | `redis://localhost:6379` | Redis URL (only for redis storage) |
 | `keyPrefix` | `PROGRESSIVE_ZOD_KEY_PREFIX` | `pzod:` | Key namespace prefix |
 | `maxSamples` | `PROGRESSIVE_ZOD_MAX_SAMPLES` | `1000` | Max samples per type |
