@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { StorageBackend } from "./types.js";
-import { getStorage } from "./storage/index.js";
+import { getStorage } from "./storage/resolve.js";
 
 export interface BatchConfig {
   /** Max observations to buffer before forcing a flush. Default: 512 */
