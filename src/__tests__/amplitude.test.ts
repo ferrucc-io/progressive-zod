@@ -24,81 +24,42 @@ describe("AmplitudeStorage", () => {
     storage = new AmplitudeStorage(client, { keyPrefix: "test:" });
   });
 
-  it("tracks type registration", () => {
+  it("addName is a no-op", () => {
     storage.addName("UserPayload");
-    expect(client.events).toHaveLength(1);
-    expect(client.events[0]).toMatchObject({
-      name: "pzod:type_registered",
-      properties: { type_name: "UserPayload" },
-    });
+    expect(client.events).toHaveLength(0);
   });
 
-  it("tracks observations with sample metadata", () => {
-    storage.addSample("UserPayload", JSON.stringify({ name: "Alice", age: 30 }));
-    expect(client.events).toHaveLength(1);
-    expect(client.events[0]).toMatchObject({
-      name: "pzod:observation",
-      properties: {
-        type_name: "UserPayload",
-        status: "untyped",
-        sample_type: "object",
-        field_count: 2,
-      },
-    });
+  it("addSample is a no-op", () => {
+    storage.addSample("UserPayload", JSON.stringify({ name: "Alice" }));
+    expect(client.events).toHaveLength(0);
   });
 
-  it("tracks violations", () => {
+  it("addViolation is a no-op", () => {
     storage.addViolation("UserPayload", JSON.stringify({ bad: true }));
-    expect(client.events).toHaveLength(1);
-    expect(client.events[0]).toMatchObject({
-      name: "pzod:violation",
-      properties: {
-        type_name: "UserPayload",
-        sample_type: "object",
-        field_count: 1,
-      },
-    });
+    expect(client.events).toHaveLength(0);
   });
 
-  it("tracks conform/violate schema checks", () => {
+  it("tracks conform as pzod:type_checked", () => {
     storage.incrConform("UserPayload");
-    storage.incrViolate("UserPayload");
-    expect(client.events).toHaveLength(2);
+    expect(client.events).toHaveLength(1);
     expect(client.events[0]).toMatchObject({
-      name: "pzod:schema_check",
+      name: "pzod:type_checked",
       properties: { type_name: "UserPayload", result: "conform" },
     });
-    expect(client.events[1]).toMatchObject({
-      name: "pzod:schema_check",
+  });
+
+  it("tracks violate as pzod:type_checked", () => {
+    storage.incrViolate("UserPayload");
+    expect(client.events).toHaveLength(1);
+    expect(client.events[0]).toMatchObject({
+      name: "pzod:type_checked",
       properties: { type_name: "UserPayload", result: "violate" },
     });
   });
 
   it("uses device_id based on keyPrefix", () => {
-    storage.addName("Test");
+    storage.incrConform("Test");
     expect(client.events[0].options).toEqual({ device_id: "pzod:test:" });
-  });
-
-  it("truncates sample_preview to 256 chars", () => {
-    const longSample = JSON.stringify({ data: "x".repeat(500) });
-    storage.addSample("Big", longSample);
-    expect(client.events[0].properties!.sample_preview).toHaveLength(256);
-  });
-
-  it("handles arrays correctly", () => {
-    storage.addSample("Items", JSON.stringify([1, 2, 3]));
-    expect(client.events[0].properties).toMatchObject({
-      sample_type: "array",
-      field_count: 0,
-    });
-  });
-
-  it("handles primitives correctly", () => {
-    storage.addSample("Count", JSON.stringify(42));
-    expect(client.events[0].properties).toMatchObject({
-      sample_type: "number",
-      field_count: 0,
-    });
   });
 
   // Read methods return empty — data lives in Amplitude dashboard

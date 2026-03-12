@@ -17,20 +17,14 @@ export interface AmplitudeClient {
 /**
  * Amplitude storage backend for progressive-zod.
  *
- * Sends type observability data as Amplitude events, designed for
- * segmentation and funnel analysis in the Amplitude dashboard.
+ * Sends a single event per type check:
  *
- * Event schema:
- *
- *   "pzod:observation"
+ *   "pzod:type_checked"
  *     - type_name: string       — the boundary name passed to progressive()
- *     - status: "conform" | "violate" | "untyped"
- *     - sample_type: string     — JS typeof the observed value
- *     - field_count: number     — number of top-level keys (objects only)
- *     - sample_preview: string  — first 256 chars of JSON (for debugging)
- *
- *   "pzod:type_registered"
- *     - type_name: string
+ *     - result: "conform" | "violate"
+ *     - sample_type: string     — JS typeof the observed value (violate only)
+ *     - field_count: number     — number of top-level keys (violate only, objects)
+ *     - sample_preview: string  — first 256 chars of JSON (violate only)
  *
  * Read methods (getNames, getSamples, etc.) are no-ops — use the
  * Amplitude dashboard to query your data.
@@ -48,46 +42,21 @@ export class AmplitudeStorage implements StorageBackend {
     this.deviceId = `pzod:${config.keyPrefix ?? "default"}`;
   }
 
-  addName(name: string): void {
-    this.client.track(
-      "pzod:type_registered",
-      { type_name: name },
-      { device_id: this.deviceId },
-    );
+  addName(_name: string): void {
+    // No-op: we only track type checks
   }
 
-  addSample(name: string, sample: string): void {
-    const parsed = safeParse(sample);
-    this.client.track(
-      "pzod:observation",
-      {
-        type_name: name,
-        status: "untyped",
-        sample_type: typeOf(parsed),
-        field_count: fieldCount(parsed),
-        sample_preview: sample.slice(0, 256),
-      },
-      { device_id: this.deviceId },
-    );
+  addSample(_name: string, _sample: string): void {
+    // No-op: we only track type checks
   }
 
-  addViolation(name: string, violation: string): void {
-    const parsed = safeParse(violation);
-    this.client.track(
-      "pzod:violation",
-      {
-        type_name: name,
-        sample_type: typeOf(parsed),
-        field_count: fieldCount(parsed),
-        sample_preview: violation.slice(0, 256),
-      },
-      { device_id: this.deviceId },
-    );
+  addViolation(_name: string, _violation: string): void {
+    // No-op: violation data is included in the type_checked event via incrViolate
   }
 
   incrConform(name: string): void {
     this.client.track(
-      "pzod:schema_check",
+      "pzod:type_checked",
       { type_name: name, result: "conform" },
       { device_id: this.deviceId },
     );
@@ -95,7 +64,7 @@ export class AmplitudeStorage implements StorageBackend {
 
   incrViolate(name: string): void {
     this.client.track(
-      "pzod:schema_check",
+      "pzod:type_checked",
       { type_name: name, result: "violate" },
       { device_id: this.deviceId },
     );
@@ -122,25 +91,4 @@ export class AmplitudeStorage implements StorageBackend {
   disconnect(): void {
     // Amplitude SDK manages its own lifecycle — nothing to clean up
   }
-}
-
-function safeParse(json: string): unknown {
-  try {
-    return JSON.parse(json);
-  } catch {
-    return json;
-  }
-}
-
-function typeOf(value: unknown): string {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  return typeof value;
-}
-
-function fieldCount(value: unknown): number {
-  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-    return Object.keys(value as Record<string, unknown>).length;
-  }
-  return 0;
 }
