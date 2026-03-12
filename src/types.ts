@@ -1,8 +1,9 @@
 import type { z } from "zod";
+import type { AmplitudeClient } from "./storage/amplitude.js";
 
 export interface ProgressiveConfig {
-  /** "memory" (default) for localhost, "redis" for production */
-  storage?: "memory" | "redis";
+  /** "memory" (default) for localhost, "redis" for production, "amplitude" for analytics */
+  storage?: "memory" | "redis" | "amplitude";
   /** Redis connection URL (only used when storage is "redis") */
   redisUrl?: string;
   /** Prefix for all storage keys */
@@ -13,6 +14,25 @@ export interface ProgressiveConfig {
   maxSamples?: number;
   /** Path for file-based persistence in memory mode */
   dataDir?: string;
+  /**
+   * Amplitude client instance (only used when storage is "amplitude").
+   * Initialize with a separate API key for your observability project,
+   * not your main product analytics project.
+   *
+   * @example
+   * ```ts
+   * import * as amplitude from "@amplitude/analytics-node";
+   *
+   * const pzodAmplitude = amplitude.createInstance();
+   * pzodAmplitude.init("YOUR_OBSERVABILITY_PROJECT_API_KEY");
+   *
+   * configure({
+   *   storage: "amplitude",
+   *   amplitudeClient: pzodAmplitude,
+   * });
+   * ```
+   */
+  amplitudeClient?: AmplitudeClient;
 }
 
 export interface ProgressiveSchema {

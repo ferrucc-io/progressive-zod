@@ -29,7 +29,16 @@ export async function getStorage(): Promise<StorageBackend> {
 
   const config = getConfig();
 
-  if (config.storage === "redis") {
+  if (config.storage === "amplitude") {
+    if (!currentConfig.amplitudeClient) {
+      throw new Error(
+        "progressive-zod: storage is set to 'amplitude' but no amplitudeClient was provided. " +
+        "Pass an Amplitude client instance via configure({ amplitudeClient }).",
+      );
+    }
+    const { AmplitudeStorage } = await import("./amplitude.js");
+    currentStorage = new AmplitudeStorage(currentConfig.amplitudeClient, config);
+  } else if (config.storage === "redis") {
     // Dynamic import so ioredis isn't loaded unless needed
     const { RedisStorage } = await import("./redis.js");
     currentStorage = new RedisStorage(config);
