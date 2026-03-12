@@ -1,13 +1,18 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { z } from "zod";
-import { progressive } from "../progressive.js";
+import { progressive, configureBatch, forceFlush, shutdown } from "../progressive.js";
 import { configure } from "../storage/index.js";
 import { MemoryStorage } from "../storage/memory.js";
 
 describe("progressive", () => {
   beforeEach(() => {
-    // Reset to memory storage with no persistence each test
     configure({ storage: "memory", dataDir: undefined });
+    // Use tight batch settings for tests
+    configureBatch({ flushIntervalMs: 60_000, maxExportBatchSize: 512, maxQueueSize: 2048 });
+  });
+
+  afterEach(async () => {
+    await shutdown();
   });
 
   it("returns input unchanged", () => {
@@ -32,6 +37,34 @@ describe("progressive", () => {
     expect(schema.parse("hello")).toBe("hello");
     expect(schema.parse(42)).toBe(42);
     expect(schema.parse(null)).toBe(null);
+  });
+
+  it("flushes observations to storage on forceFlush", async () => {
+    const schema = progressive("flush-test");
+    schema.parse({ a: 1 });
+    schema.parse({ a: 2 });
+
+    await forceFlush();
+
+    const { getStorage } = await import("../storage/index.js");
+    const storage = await getStorage();
+    const names = await storage.getNames();
+    expect(names).toContain("flush-test");
+    const samples = await storage.getSamples("flush-test");
+    expect(samples).toHaveLength(2);
+  });
+
+  it("tracks conform and violate through batching", async () => {
+    const s = progressive("stats-test", z.object({ name: z.string() }));
+    s.parse({ name: "valid" });
+    s.parse({ name: 123 }); // violates
+
+    await forceFlush();
+
+    const { getStorage } = await import("../storage/index.js");
+    const storage = await getStorage();
+    const stats = await storage.getStats("stats-test");
+    expect(stats).toEqual({ conform: 1, violate: 1 });
   });
 });
 
