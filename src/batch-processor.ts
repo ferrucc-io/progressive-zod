@@ -169,13 +169,19 @@ export class BatchProcessor {
     if (obs.schema) {
       const result = obs.schema.safeParse(JSON.parse(obs.serialized));
       if (result.success) {
-        await storage.incrConform(obs.name);
+        await storage.incrConform(obs.name, obs.serialized);
       } else {
-        await storage.incrViolate(obs.name);
+        const errors = result.error.issues
+          .map((i) => {
+            const path = i.path.length > 0 ? i.path.join(".") : "(root)";
+            return `${path}: ${i.message}`;
+          })
+          .join("; ");
+        await storage.incrViolate(obs.name, obs.serialized, errors);
         await storage.addViolation(obs.name, obs.serialized);
       }
     } else {
-      await storage.incrViolate(obs.name);
+      await storage.incrViolate(obs.name, obs.serialized, "no schema defined");
       await storage.addViolation(obs.name, obs.serialized);
     }
   }

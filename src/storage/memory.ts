@@ -1,5 +1,3 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import type { StorageBackend, ProgressiveConfig } from "../types.js";
 
 interface TypeData {
@@ -10,27 +8,21 @@ interface TypeData {
 }
 
 /**
- * In-memory storage backend with optional file persistence.
- * Perfect for localhost development — no Redis required.
+ * In-memory storage backend.
+ * No Node.js built-in dependencies — safe for browser bundles.
  */
 export class MemoryStorage implements StorageBackend {
-  private names = new Set<string>();
-  private data = new Map<string, TypeData>();
-  private maxSamples: number;
-  private maxViolations: number;
-  private dataDir: string | undefined;
-  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  protected names = new Set<string>();
+  protected data = new Map<string, TypeData>();
+  protected maxSamples: number;
+  protected maxViolations: number;
 
   constructor(config: ProgressiveConfig = {}) {
     this.maxSamples = config.maxSamples ?? 1000;
     this.maxViolations = config.maxViolations ?? 1000;
-    this.dataDir = config.dataDir;
-    if (this.dataDir) {
-      this.loadFromDisk();
-    }
   }
 
-  private getOrCreate(name: string): TypeData {
+  protected getOrCreate(name: string): TypeData {
     let entry = this.data.get(name);
     if (!entry) {
       entry = { samples: [], violations: [], conform: 0, violate: 0 };
@@ -41,7 +33,6 @@ export class MemoryStorage implements StorageBackend {
 
   addName(name: string): void {
     this.names.add(name);
-    this.schedulePersist();
   }
 
   addSample(name: string, sample: string): void {
@@ -50,7 +41,6 @@ export class MemoryStorage implements StorageBackend {
     if (entry.samples.length > this.maxSamples) {
       entry.samples.length = this.maxSamples;
     }
-    this.schedulePersist();
   }
 
   addViolation(name: string, violation: string): void {
@@ -59,17 +49,14 @@ export class MemoryStorage implements StorageBackend {
     if (entry.violations.length > this.maxViolations) {
       entry.violations.length = this.maxViolations;
     }
-    this.schedulePersist();
   }
 
   incrConform(name: string): void {
     this.getOrCreate(name).conform++;
-    this.schedulePersist();
   }
 
   incrViolate(name: string): void {
     this.getOrCreate(name).violate++;
-    this.schedulePersist();
   }
 
   getNames(): string[] {
@@ -90,58 +77,6 @@ export class MemoryStorage implements StorageBackend {
   }
 
   disconnect(): void {
-    if (this.flushTimer) {
-      clearTimeout(this.flushTimer);
-      this.flushTimer = undefined;
-    }
-    if (this.dataDir) {
-      this.persistToDisk();
-    }
-  }
-
-  private schedulePersist(): void {
-    if (!this.dataDir || this.flushTimer) return;
-    this.flushTimer = setTimeout(() => {
-      this.flushTimer = undefined;
-      this.persistToDisk();
-    }, 500);
-  }
-
-  private persistToDisk(): void {
-    if (!this.dataDir) return;
-    try {
-      fs.mkdirSync(this.dataDir, { recursive: true });
-      const snapshot = {
-        names: [...this.names],
-        types: Object.fromEntries(this.data),
-      };
-      fs.writeFileSync(
-        path.join(this.dataDir, "data.json"),
-        JSON.stringify(snapshot, null, 2),
-      );
-    } catch {
-      // fire-and-forget — never crash the app
-    }
-  }
-
-  private loadFromDisk(): void {
-    if (!this.dataDir) return;
-    try {
-      const raw = fs.readFileSync(
-        path.join(this.dataDir, "data.json"),
-        "utf-8",
-      );
-      const snapshot = JSON.parse(raw);
-      if (Array.isArray(snapshot.names)) {
-        for (const n of snapshot.names) this.names.add(n);
-      }
-      if (snapshot.types && typeof snapshot.types === "object") {
-        for (const [key, val] of Object.entries(snapshot.types)) {
-          this.data.set(key, val as TypeData);
-        }
-      }
-    } catch {
-      // no data yet — that's fine
-    }
+    // No-op for pure in-memory storage
   }
 }

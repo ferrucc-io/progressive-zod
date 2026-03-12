@@ -1,0 +1,19 @@
+{
+  "name": "e2e-test-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@amplitude/analytics-browser": "^2.36.3",
+    "progressive-zod": "file:..",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "vite": "^6.0.0"
+  }
+}

@@ -20,11 +20,12 @@ export interface AmplitudeClient {
  * Sends a single event per type check:
  *
  *   "pzod:type_checked"
- *     - type_name: string       — the boundary name passed to progressive()
+ *     - type_name: string            — the boundary name passed to progressive()
  *     - result: "conform" | "violate"
- *     - sample_type: string     — JS typeof the observed value (violate only)
- *     - field_count: number     — number of top-level keys (violate only, objects)
- *     - sample_preview: string  — first 256 chars of JSON (violate only)
+ *     - sample_type: string          — JS typeof the observed value (violate only)
+ *     - field_count: number          — number of top-level keys (violate only, objects)
+ *     - sample_preview: string       — first 256 chars of JSON (violate only)
+ *     - validation_errors: string    — human-readable Zod validation errors (violate only)
  *
  * Read methods (getNames, getSamples, etc.) are no-ops — use the
  * Amplitude dashboard to query your data.
@@ -54,7 +55,7 @@ export class AmplitudeStorage implements StorageBackend {
     // No-op: violation data is included in the type_checked event via incrViolate
   }
 
-  incrConform(name: string): void {
+  incrConform(name: string, _sample?: string): void {
     this.client.track(
       "pzod:type_checked",
       { type_name: name, result: "conform" },
@@ -62,10 +63,33 @@ export class AmplitudeStorage implements StorageBackend {
     );
   }
 
-  incrViolate(name: string): void {
+  incrViolate(name: string, sample?: string, errors?: string): void {
+    const properties: Record<string, unknown> = {
+      type_name: name,
+      result: "violate",
+    };
+
+    if (sample) {
+      try {
+        const parsed = JSON.parse(sample);
+        properties.sample_type = typeof parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          properties.field_count = Object.keys(parsed).length;
+        }
+        properties.sample_preview = sample.slice(0, 256);
+      } catch {
+        properties.sample_type = "unknown";
+        properties.sample_preview = sample.slice(0, 256);
+      }
+    }
+
+    if (errors) {
+      properties.validation_errors = errors.slice(0, 1024);
+    }
+
     this.client.track(
       "pzod:type_checked",
-      { type_name: name, result: "violate" },
+      properties,
       { device_id: this.deviceId },
     );
   }

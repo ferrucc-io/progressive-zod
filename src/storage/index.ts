@@ -1,5 +1,5 @@
 import { _setStorageFactory } from "./resolve.js";
-import { MemoryStorage } from "./memory.js";
+import { PersistentMemoryStorage } from "./memory-server.js";
 
 // Register server storage factory — supports all backends including Redis
 _setStorageFactory(async (config, userConfig) => {
@@ -18,7 +18,9 @@ _setStorageFactory(async (config, userConfig) => {
     return new RedisStorage(config);
   }
 
-  return new MemoryStorage(config);
+  // Default to file persistence in server environment
+  const serverConfig = { ...config, dataDir: config.dataDir ?? ".progressive-zod" };
+  return new PersistentMemoryStorage(serverConfig);
 });
 
 export { configure, getConfig, getStorage, disconnectStorage } from "./resolve.js";
