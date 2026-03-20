@@ -71,7 +71,7 @@ configure({
 });
 ```
 
-For production, you can optionally use Redis:
+For production, you can use Redis or Amplitude:
 
 ```bash
 npm install ioredis
@@ -83,6 +83,46 @@ configure({
   redisUrl: "redis://your-redis:6379",
 });
 ```
+
+### Amplitude adapter
+
+The Amplitude adapter streams type-check results as analytics events instead of storing raw samples locally. This is useful when you want to track conformance rates in a dashboard without managing storage infrastructure.
+
+**How it works:** each call to `.parse()` fires a single Amplitude event (default name: `progressive-zod: results`). Conform checks send `{ type_name, result: "conforms" }`. Violations include extra properties: `sample_type`, `field_count`, `sample_preview` (first 256 chars, flattened to a `key=value` string), and `validation_errors`.
+
+Read methods (`list`, `infer`, `stats`, `violations`) are no-ops — use the Amplitude dashboard to query your data.
+
+```bash
+npm install @amplitude/analytics-node
+```
+
+```typescript
+import * as amplitude from "@amplitude/analytics-node";
+import { configure } from "progressive-zod";
+
+// Use a separate Amplitude project for observability, not your main product analytics
+const pzodAmplitude = amplitude.createInstance();
+pzodAmplitude.init("YOUR_OBSERVABILITY_PROJECT_API_KEY");
+
+configure({
+  storage: "amplitude",
+  amplitudeClient: pzodAmplitude,
+});
+```
+
+Works in the browser too — import from `progressive-zod/client` and use `@amplitude/analytics-browser` instead.
+
+You can customize the event name:
+
+```typescript
+configure({
+  storage: "amplitude",
+  amplitudeClient: pzodAmplitude,
+  amplitudeEventName: "my-app: type results",
+});
+```
+
+Events are grouped by a stable `device_id` derived from your `keyPrefix` config (`progressive-zod:<keyPrefix>`).
 
 ## Track conformance against existing schemas
 
@@ -129,3 +169,5 @@ This package includes a `/instrument` skill for [Claude Code](https://docs.anthr
 | `maxSamples` | `PROGRESSIVE_ZOD_MAX_SAMPLES` | `1000` | Max samples per type |
 | `maxViolations` | `PROGRESSIVE_ZOD_MAX_VIOLATIONS` | `1000` | Max violations per type |
 | `dataDir` | `PROGRESSIVE_ZOD_DATA_DIR` | `.progressive-zod` | File persistence path (memory mode) |
+| `amplitudeClient` | — | — | Amplitude SDK instance (required for amplitude storage) |
+| `amplitudeEventName` | — | `"progressive-zod: results"` | Custom event name (amplitude storage only) |
