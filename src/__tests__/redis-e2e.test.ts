@@ -1,9 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { z } from "zod";
-import { execSync } from "child_process";
 import Redis from "ioredis";
 import { progressive, configureBatch, forceFlush, shutdown } from "../progressive.js";
 import { configure, getStorage, disconnectStorage } from "../storage/index.js";
+import { listCommand } from "../cli/commands/list.js";
+import { statsCommand } from "../cli/commands/stats.js";
+import { violationsCommand } from "../cli/commands/violations.js";
+import { inferCommand } from "../cli/commands/infer.js";
 
 const TEST_PREFIX = `pzod:test:${Date.now()}:`;
 const REDIS_URL = process.env.PROGRESSIVE_ZOD_REDIS_URL ?? "redis://localhost:6379";
@@ -140,32 +143,27 @@ describe.skipIf(!redisAvailable)("Redis storage e2e", () => {
   });
 
   describe("CLI commands with Redis storage", () => {
-    const cliEnv = {
-      ...process.env,
-      PROGRESSIVE_ZOD_STORAGE: "redis",
-      PROGRESSIVE_ZOD_REDIS_URL: REDIS_URL,
-      PROGRESSIVE_ZOD_KEY_PREFIX: TEST_PREFIX,
-    };
-
-    function runCli(args: string): string {
-      return execSync(`npx tsx src/cli/index.ts ${args}`, {
-        cwd: "/Users/ferruccio/conductor/workspaces/progressive-zod/buffalo",
-        env: cliEnv,
-        encoding: "utf-8",
-        timeout: 15_000,
-      }).trim();
+    function captureConsole(fn: () => Promise<void>): Promise<string> {
+      const lines: string[] = [];
+      const spy = vi.spyOn(console, "log").mockImplementation((...args: any[]) => {
+        lines.push(args.map(String).join(" "));
+      });
+      return fn().then(() => {
+        spy.mockRestore();
+        return lines.join("\n");
+      });
     }
 
-    it("list — shows all monitored types", () => {
-      const output = runCli("list");
+    it("list — shows all monitored types", async () => {
+      const output = await captureConsole(() => listCommand());
       expect(output).toContain("Monitored types:");
       expect(output).toContain("ApiResponse");
       expect(output).toContain("UnknownBoundary");
       expect(output).toContain("UserPayload");
     });
 
-    it("stats — shows conform/violate for a type", () => {
-      const output = runCli("stats UserPayload");
+    it("stats — shows conform/violate for a type", async () => {
+      const output = await captureConsole(() => statsCommand("UserPayload"));
       expect(output).toContain('Stats for "UserPayload"');
       expect(output).toContain("Conform:    2");
       expect(output).toContain("Violate:    2");
@@ -173,40 +171,39 @@ describe.skipIf(!redisAvailable)("Redis storage e2e", () => {
       expect(output).toContain("Conformance: 50.0%");
     });
 
-    it("stats — works for types with 0% conformance", () => {
-      const output = runCli("stats UnknownBoundary");
+    it("stats — works for types with 0% conformance", async () => {
+      const output = await captureConsole(() => statsCommand("UnknownBoundary"));
       expect(output).toContain('Stats for "UnknownBoundary"');
       expect(output).toContain("Conform:    0");
       expect(output).toContain("Violate:    2");
       expect(output).toContain("Conformance: 0.0%");
     });
 
-    it("violations — shows recent violations", () => {
-      const output = runCli("violations UserPayload");
+    it("violations — shows recent violations", async () => {
+      const output = await captureConsole(() => violationsCommand("UserPayload", { limit: "10" }));
       expect(output).toContain('Recent violations for "UserPayload"');
-      // Should contain JSON violation data
       expect(output).toContain("---");
     });
 
-    it("violations --limit — respects the limit flag", () => {
-      const output = runCli("violations UserPayload --limit 1");
+    it("violations --limit — respects the limit flag", async () => {
+      const output = await captureConsole(() => violationsCommand("UserPayload", { limit: "1" }));
       expect(output).toContain('Recent violations for "UserPayload" (1)');
     });
 
-    it("violations — shows no violations message when empty", () => {
-      const output = runCli("violations PassThrough");
+    it("violations — shows no violations message when empty", async () => {
+      const output = await captureConsole(() => violationsCommand("PassThrough", { limit: "10" }));
       expect(output).toContain('No violations found for "PassThrough"');
     });
 
-    it("infer — generates a Zod schema from samples", () => {
-      const output = runCli("infer UserPayload");
+    it("infer — generates a Zod schema from samples", async () => {
+      const output = await captureConsole(() => inferCommand("UserPayload"));
       expect(output).toContain('Inferred schema for "UserPayload"');
       expect(output).toContain('import { z } from "zod"');
       expect(output).toContain("z.object");
     });
 
-    it("infer — shows message when no samples exist", () => {
-      const output = runCli("infer NonExistentType");
+    it("infer — shows message when no samples exist", async () => {
+      const output = await captureConsole(() => inferCommand("NonExistentType"));
       expect(output).toContain('No samples found for "NonExistentType"');
     });
   });
