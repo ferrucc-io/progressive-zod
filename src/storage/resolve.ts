@@ -1,5 +1,36 @@
+import { z } from "zod";
 import type { ProgressiveConfig, StorageBackend } from "../types.js";
 import { MemoryStorage } from "./memory.js";
+
+const progressiveConfigSchema = z
+  .object({
+    storage: z.enum(["memory", "redis", "amplitude"]).optional(),
+    redisUrl: z.string().optional(),
+    keyPrefix: z.string().optional(),
+    maxViolations: z.number().optional(),
+    maxSamples: z.number().optional(),
+    dataDir: z.string().optional(),
+    amplitudeClient: z.any().optional(),
+    amplitudeEventName: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.amplitudeEventName && data.storage !== "amplitude") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'amplitudeEventName can only be used when storage is "amplitude"',
+        path: ["amplitudeEventName"],
+      });
+    }
+    if (data.amplitudeClient && data.storage !== "amplitude") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'amplitudeClient can only be used when storage is "amplitude"',
+        path: ["amplitudeClient"],
+      });
+    }
+  });
 
 let currentConfig: ProgressiveConfig = {};
 let currentStorage: StorageBackend | null = null;
@@ -22,7 +53,9 @@ export function _setStorageFactory(factory: StorageFactory): void {
 }
 
 export function configure(config: ProgressiveConfig): void {
-  currentConfig = { ...currentConfig, ...config };
+  const merged = { ...currentConfig, ...config };
+  progressiveConfigSchema.parse(merged);
+  currentConfig = merged;
   // Force re-creation on next access
   if (currentStorage) {
     currentStorage.disconnect();

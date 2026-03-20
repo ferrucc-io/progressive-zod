@@ -19,13 +19,13 @@ export interface AmplitudeClient {
  *
  * Sends a single event per type check:
  *
- *   "pzod:type_checked"
+ *   this.eventName
  *     - type_name: string            — the boundary name passed to progressive()
- *     - result: "conform" | "violate"
- *     - sample_type: string          — JS typeof the observed value (violate only)
- *     - field_count: number          — number of top-level keys (violate only, objects)
- *     - sample_preview: string       — first 256 chars of JSON (violate only)
- *     - validation_errors: string    — human-readable Zod validation errors (violate only)
+ *     - result: "conforms" | "violation"
+ *     - sample_type: string          — JS typeof the observed value (violation only)
+ *     - field_count: number          — number of top-level keys (violation only, objects)
+ *     - sample_preview: string       — first 256 chars of JSON (violation only)
+ *     - validation_errors: string    — human-readable Zod validation errors (violation only)
  *
  * Read methods (getNames, getSamples, etc.) are no-ops — use the
  * Amplitude dashboard to query your data.
@@ -46,6 +46,7 @@ function flattenToString(value: unknown): string {
 export class AmplitudeStorage implements StorageBackend {
   private readonly client: AmplitudeClient;
   private readonly deviceId: string;
+  private readonly eventName: string;
 
   constructor(
     client: AmplitudeClient,
@@ -53,7 +54,8 @@ export class AmplitudeStorage implements StorageBackend {
   ) {
     this.client = client;
     // Use a stable device_id so Amplitude groups events from this service
-    this.deviceId = `pzod:${config.keyPrefix ?? "default"}`;
+    this.deviceId = `progressive-zod:${config.keyPrefix ?? "default"}`;
+    this.eventName = config.amplitudeEventName ?? "progressive-zod: results";
   }
 
   addName(_name: string): void {
@@ -70,8 +72,8 @@ export class AmplitudeStorage implements StorageBackend {
 
   incrConform(name: string, _sample?: string): void {
     this.client.track(
-      "pzod:type_checked",
-      { type_name: name, result: "conform" },
+      this.eventName,
+      { type_name: name, result: "conforms" },
       { device_id: this.deviceId },
     );
   }
@@ -79,7 +81,7 @@ export class AmplitudeStorage implements StorageBackend {
   incrViolate(name: string, sample?: string, errors?: string): void {
     const properties: Record<string, unknown> = {
       type_name: name,
-      result: "violate",
+      result: "violation",
     };
 
     if (sample) {
@@ -102,7 +104,7 @@ export class AmplitudeStorage implements StorageBackend {
     }
 
     this.client.track(
-      "pzod:type_checked",
+      this.eventName,
       properties,
       { device_id: this.deviceId },
     );

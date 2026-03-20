@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { AmplitudeClient } from "../storage/amplitude.js";
 import { AmplitudeStorage } from "../storage/amplitude.js";
+import { configure } from "../storage/resolve.js";
 import type { ProgressiveConfig } from "../types.js";
 
 function createMockClient(): AmplitudeClient & {
@@ -39,21 +40,21 @@ describe("AmplitudeStorage", () => {
     expect(client.events).toHaveLength(0);
   });
 
-  it("tracks conform as pzod:type_checked", () => {
+  it("tracks conform as progressive-zod: results", () => {
     storage.incrConform("UserPayload");
     expect(client.events).toHaveLength(1);
     expect(client.events[0]).toMatchObject({
-      name: "pzod:type_checked",
-      properties: { type_name: "UserPayload", result: "conform" },
+      name: "progressive-zod: results",
+      properties: { type_name: "UserPayload", result: "conforms" },
     });
   });
 
-  it("tracks violate as pzod:type_checked", () => {
+  it("tracks violate as progressive-zod: results", () => {
     storage.incrViolate("UserPayload");
     expect(client.events).toHaveLength(1);
     expect(client.events[0]).toMatchObject({
-      name: "pzod:type_checked",
-      properties: { type_name: "UserPayload", result: "violate" },
+      name: "progressive-zod: results",
+      properties: { type_name: "UserPayload", result: "violation" },
     });
   });
 
@@ -84,7 +85,18 @@ describe("AmplitudeStorage", () => {
 
   it("uses device_id based on keyPrefix", () => {
     storage.incrConform("Test");
-    expect(client.events[0].options).toEqual({ device_id: "pzod:test:" });
+    expect(client.events[0].options).toEqual({ device_id: "progressive-zod:test:" });
+  });
+
+  it("uses custom event name when configured", () => {
+    const customStorage = new AmplitudeStorage(client, {
+      keyPrefix: "test:",
+      amplitudeEventName: "my-app: type results",
+    });
+    customStorage.incrConform("UserPayload");
+    customStorage.incrViolate("UserPayload");
+    expect(client.events[0].name).toBe("my-app: type results");
+    expect(client.events[1].name).toBe("my-app: type results");
   });
 
   // Read methods return empty — data lives in Amplitude dashboard
@@ -97,5 +109,29 @@ describe("AmplitudeStorage", () => {
 
   it("disconnect is a no-op", () => {
     expect(() => storage.disconnect()).not.toThrow();
+  });
+
+  describe("config validation", () => {
+    it("throws when amplitudeEventName is used with non-amplitude storage", () => {
+      expect(() =>
+        configure({ storage: "memory", amplitudeEventName: "custom" }),
+      ).toThrow(/amplitudeEventName can only be used/);
+    });
+
+    it("throws when amplitudeClient is used with non-amplitude storage", () => {
+      expect(() =>
+        configure({ storage: "redis", amplitudeClient: client }),
+      ).toThrow(/amplitudeClient can only be used/);
+    });
+
+    it("allows amplitudeEventName with amplitude storage", () => {
+      expect(() =>
+        configure({
+          storage: "amplitude",
+          amplitudeClient: client,
+          amplitudeEventName: "custom",
+        }),
+      ).not.toThrow();
+    });
   });
 });
