@@ -33,6 +33,8 @@ export interface ProgressiveConfig {
    * ```
    */
   amplitudeClient?: AmplitudeClient;
+  /** Custom event name for the Amplitude adapter (default: "progressive-zod: results") */
+  amplitudeEventName?: string;
 }
 
 export interface ProgressiveSchema {

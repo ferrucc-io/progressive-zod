@@ -85,13 +85,13 @@ async function runTest() {
 
     // 7. Verify results
     const conformCount = amplitudeEvents.filter(
-      (e) => e.properties?.result === "conform"
+      (e) => e.properties?.result === "conforms"
     ).length;
     const violateCount = amplitudeEvents.filter(
-      (e) => e.properties?.result === "violate"
+      (e) => e.properties?.result === "violation"
     ).length;
     const allPzod = amplitudeEvents.every(
-      (e) => e.name === "pzod:type_checked"
+      (e) => e.name === "progressive-zod: results"
     );
     const typeNames = [
       ...new Set(amplitudeEvents.map((e) => e.properties?.type_name)),
