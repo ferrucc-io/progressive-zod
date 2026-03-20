@@ -88,7 +88,7 @@ test.describe("progressive-zod with Amplitude connector", () => {
     );
 
     const violations = events.filter(
-      (e: any) => e.properties?.result === "violate"
+      (e: any) => e.properties?.result === "violation"
     );
 
     for (const v of violations) {
