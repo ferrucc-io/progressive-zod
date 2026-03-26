@@ -83,9 +83,9 @@ describe("AmplitudeStorage", () => {
     expect(props.sample_type).toBe("string");
   });
 
-  it("uses device_id based on keyPrefix", () => {
+  it("does not override device_id", () => {
     storage.incrConform("Test");
-    expect(client.events[0].options).toEqual({ device_id: "progressive-zod:test:" });
+    expect(client.events[0].options).toBeUndefined();
   });
 
   it("uses custom event name when configured", () => {

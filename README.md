@@ -122,7 +122,7 @@ configure({
 });
 ```
 
-Events are grouped by a stable `device_id` derived from your `keyPrefix` config (`progressive-zod:<keyPrefix>`).
+Events use whatever `user_id` and `device_id` you configured on your Amplitude client instance.
 
 ## Track conformance against existing schemas
 

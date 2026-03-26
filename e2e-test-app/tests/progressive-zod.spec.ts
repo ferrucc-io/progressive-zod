@@ -49,21 +49,6 @@ test.describe("progressive-zod with Amplitude connector", () => {
     ]);
   });
 
-  test("all events have device_id", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.locator("#status")).toHaveText("done", {
-      timeout: 10_000,
-    });
-
-    const events = await page.evaluate(
-      () => (window as any).__amplitudeEvents
-    );
-
-    for (const event of events) {
-      expect(event.options?.device_id).toBeTruthy();
-    }
-  });
-
   test("progressive().parse() returns input unchanged", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator("#status")).toHaveText("done", {

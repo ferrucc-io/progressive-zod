@@ -45,7 +45,6 @@ function flattenToString(value: unknown): string {
 
 export class AmplitudeStorage implements StorageBackend {
   private readonly client: AmplitudeClient;
-  private readonly deviceId: string;
   private readonly eventName: string;
 
   constructor(
@@ -53,8 +52,6 @@ export class AmplitudeStorage implements StorageBackend {
     config: ProgressiveConfig,
   ) {
     this.client = client;
-    // Use a stable device_id so Amplitude groups events from this service
-    this.deviceId = `progressive-zod:${config.keyPrefix ?? "default"}`;
     this.eventName = config.amplitudeEventName ?? "progressive-zod: results";
   }
 
@@ -71,11 +68,7 @@ export class AmplitudeStorage implements StorageBackend {
   }
 
   incrConform(name: string, _sample?: string): void {
-    this.client.track(
-      this.eventName,
-      { type_name: name, result: "conforms" },
-      { device_id: this.deviceId },
-    );
+    this.client.track(this.eventName, { type_name: name, result: "conforms" });
   }
 
   incrViolate(name: string, sample?: string, errors?: string): void {
@@ -103,11 +96,7 @@ export class AmplitudeStorage implements StorageBackend {
       properties.validation_errors = errors.slice(0, 1024);
     }
 
-    this.client.track(
-      this.eventName,
-      properties,
-      { device_id: this.deviceId },
-    );
+    this.client.track(this.eventName, properties);
   }
 
   // --- Read methods: no-ops (use Amplitude dashboard) ---
