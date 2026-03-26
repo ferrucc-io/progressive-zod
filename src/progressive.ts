@@ -3,13 +3,14 @@ import type { ProgressiveSchema } from "./types.js";
 import { BatchProcessor } from "./batch-processor.js";
 import type { BatchConfig } from "./batch-processor.js";
 
-let processor: BatchProcessor | null = null;
+const PROCESSOR_KEY = Symbol.for("progressive-zod:processor");
 
 function getProcessor(): BatchProcessor {
-  if (!processor) {
-    processor = new BatchProcessor();
+  const g = globalThis as Record<symbol, BatchProcessor | undefined>;
+  if (!g[PROCESSOR_KEY]) {
+    g[PROCESSOR_KEY] = new BatchProcessor();
   }
-  return processor;
+  return g[PROCESSOR_KEY];
 }
 
 /**
@@ -21,11 +22,12 @@ function getProcessor(): BatchProcessor {
  * - Timer is unref'd so it won't keep the process alive
  */
 export function configureBatch(config: BatchConfig): void {
-  if (processor) {
+  const g = globalThis as Record<symbol, BatchProcessor | undefined>;
+  if (g[PROCESSOR_KEY]) {
     // Flush existing before reconfiguring
-    processor.forceFlush().catch(() => {});
+    g[PROCESSOR_KEY].forceFlush().catch(() => {});
   }
-  processor = new BatchProcessor(config);
+  g[PROCESSOR_KEY] = new BatchProcessor(config);
 }
 
 /**
@@ -40,8 +42,9 @@ export function configureBatch(config: BatchConfig): void {
  * ```
  */
 export async function forceFlush(): Promise<void> {
-  if (processor) {
-    await processor.forceFlush();
+  const g = globalThis as Record<symbol, BatchProcessor | undefined>;
+  if (g[PROCESSOR_KEY]) {
+    await g[PROCESSOR_KEY].forceFlush();
   }
 }
 
@@ -49,9 +52,10 @@ export async function forceFlush(): Promise<void> {
  * Shut down the batch processor and flush remaining data.
  */
 export async function shutdown(): Promise<void> {
-  if (processor) {
-    await processor.shutdown();
-    processor = null;
+  const g = globalThis as Record<symbol, BatchProcessor | undefined>;
+  if (g[PROCESSOR_KEY]) {
+    await g[PROCESSOR_KEY].shutdown();
+    g[PROCESSOR_KEY] = undefined;
   }
 }
 
