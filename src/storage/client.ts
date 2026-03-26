@@ -1,5 +1,6 @@
 import { _setStorageFactory } from "./resolve.js";
 import { MemoryStorage } from "./memory.js";
+import { AmplitudeStorage } from "./amplitude.js";
 
 // Register client storage factory — no Redis (avoids bundling ioredis)
 _setStorageFactory(async (config, userConfig) => {
@@ -10,7 +11,6 @@ _setStorageFactory(async (config, userConfig) => {
         "Pass an Amplitude client instance via configure({ amplitudeClient }).",
       );
     }
-    const { AmplitudeStorage } = await import("./amplitude.js");
     return new AmplitudeStorage(userConfig.amplitudeClient, config);
   } else if (config.storage === "redis") {
     throw new Error(
