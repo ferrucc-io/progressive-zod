@@ -33,6 +33,7 @@
   },
   "scripts": {
     "build": "tsup",
+    "dev": "tsup --watch",
     "test": "vitest run",
     "prepublishOnly": "npm run build",
     "test:watch": "vitest",
