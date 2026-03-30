@@ -1,4 +1,4 @@
-import type { ProgressiveConfig, StorageBackend } from "../types.js";
+import type { ProgressiveConfig, ProgressiveOpts, StorageBackend } from "../types.js";
 
 /**
  * Minimal interface for an Amplitude client.
@@ -67,11 +67,15 @@ export class AmplitudeStorage implements StorageBackend {
     // No-op: violation data is included in the type_checked event via incrViolate
   }
 
-  incrConform(name: string, _sample?: string): void {
-    this.client.track(this.eventName, { type_name: name, result: "conforms" });
+  incrConform(name: string, _sample?: string, opts?: ProgressiveOpts): void {
+    const properties: Record<string, unknown> = { type_name: name, result: "conforms" };
+    if (opts && Object.keys(opts).length > 0) {
+      properties.options = Object.entries(opts).map(([k, v]) => `${k}=${v}`).join("; ");
+    }
+    this.client.track(this.eventName, properties);
   }
 
-  incrViolate(name: string, sample?: string, errors?: string): void {
+  incrViolate(name: string, sample?: string, errors?: string, opts?: ProgressiveOpts): void {
     const properties: Record<string, unknown> = {
       type_name: name,
       result: "violation",
@@ -94,6 +98,10 @@ export class AmplitudeStorage implements StorageBackend {
 
     if (errors) {
       properties.validation_errors = errors.slice(0, 1024);
+    }
+
+    if (opts && Object.keys(opts).length > 0) {
+      properties.options = Object.entries(opts).map(([k, v]) => `${k}=${v}`).join("; ");
     }
 
     this.client.track(this.eventName, properties);

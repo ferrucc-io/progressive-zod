@@ -66,6 +66,36 @@ describe("progressive", () => {
     const stats = await storage.getStats("stats-test");
     expect(stats).toEqual({ conform: 1, violate: 1 });
   });
+  it("passes opts through to storage on flush", async () => {
+    const { configure: configureAmplitude, getStorage } = await import("../storage/index.js");
+
+    const events: Array<{ name: string; properties?: Record<string, unknown> }> = [];
+    const mockClient = {
+      track(name: string, properties?: Record<string, unknown>) {
+        events.push({ name, properties });
+      },
+    };
+
+    configureAmplitude({
+      storage: "amplitude",
+      amplitudeClient: mockClient,
+    });
+
+    const s = progressive("opts-test", z.object({ name: z.string() }), {
+      team: "payments",
+      endpoint: "/checkout",
+    });
+    s.parse({ name: "valid" });
+    s.parse({ name: 123 }); // violates
+
+    await forceFlush();
+
+    const conformEvent = events.find((e) => e.properties?.result === "conforms");
+    const violateEvent = events.find((e) => e.properties?.result === "violation");
+
+    expect(conformEvent?.properties?.options).toBe("team=payments; endpoint=/checkout");
+    expect(violateEvent?.properties?.options).toBe("team=payments; endpoint=/checkout");
+  });
 });
 
 describe("MemoryStorage", () => {

@@ -99,6 +99,41 @@ describe("AmplitudeStorage", () => {
     expect(client.events[1].name).toBe("my-app: type results");
   });
 
+  describe("progressive opts", () => {
+    it("includes options as flat string on conform events", () => {
+      storage.incrConform("UserPayload", undefined, { team: "backend", endpoint: "/api/users" });
+      const props = client.events[0].properties!;
+      expect(props.options).toBe("team=backend; endpoint=/api/users");
+    });
+
+    it("includes options as flat string on violate events", () => {
+      storage.incrViolate("UserPayload", undefined, undefined, { team: "backend", endpoint: "/api/users" });
+      const props = client.events[0].properties!;
+      expect(props.options).toBe("team=backend; endpoint=/api/users");
+    });
+
+    it("omits options property when opts is undefined", () => {
+      storage.incrConform("UserPayload");
+      const props = client.events[0].properties!;
+      expect(props).not.toHaveProperty("options");
+    });
+
+    it("omits options property when opts is empty", () => {
+      storage.incrConform("UserPayload", undefined, {});
+      const props = client.events[0].properties!;
+      expect(props).not.toHaveProperty("options");
+    });
+
+    it("includes options alongside violation details", () => {
+      const sample = JSON.stringify({ name: "Alice" });
+      storage.incrViolate("UserPayload", sample, "name: Expected number", { service: "auth" });
+      const props = client.events[0].properties!;
+      expect(props.options).toBe("service=auth");
+      expect(props.sample_preview).toBe('name="Alice"');
+      expect(props.validation_errors).toBe("name: Expected number");
+    });
+  });
+
   // Read methods return empty — data lives in Amplitude dashboard
   it("returns empty from read methods", async () => {
     expect(await storage.getNames()).toEqual([]);

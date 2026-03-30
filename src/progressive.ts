@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { ProgressiveSchema } from "./types.js";
+import type { ProgressiveSchema, ProgressiveOpts } from "./types.js";
 import { BatchProcessor } from "./batch-processor.js";
 import type { BatchConfig } from "./batch-processor.js";
 
@@ -71,11 +71,12 @@ export async function shutdown(): Promise<void> {
 export function progressive(
   name: string,
   schema?: z.ZodTypeAny,
+  opts?: ProgressiveOpts,
 ): ProgressiveSchema {
   return {
     parse(input: unknown): unknown {
       // Synchronous enqueue — no I/O, no promises, no overhead
-      getProcessor().enqueue(name, input, schema);
+      getProcessor().enqueue(name, input, schema, opts);
       return input;
     },
   };
