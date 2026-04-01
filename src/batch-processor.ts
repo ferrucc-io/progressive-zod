@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { StorageBackend } from "./types.js";
+import type { StorageBackend, ProgressiveOpts } from "./types.js";
 import { getStorage } from "./storage/resolve.js";
 
 export interface BatchConfig {
@@ -15,6 +15,7 @@ interface Observation {
   name: string;
   serialized: string;
   schema?: z.ZodTypeAny;
+  opts?: ProgressiveOpts;
 }
 
 const DEFAULT_MAX_QUEUE_SIZE = 2048;
@@ -41,7 +42,7 @@ export class BatchProcessor {
    * Enqueue an observation. This is synchronous and fast — no I/O happens here.
    * If the queue is full, the oldest observation is dropped (bounded memory).
    */
-  enqueue(name: string, input: unknown, schema?: z.ZodTypeAny): void {
+  enqueue(name: string, input: unknown, schema?: z.ZodTypeAny, opts?: ProgressiveOpts): void {
     this.ensureTimer();
 
     let serialized: string;
@@ -58,7 +59,7 @@ export class BatchProcessor {
       this.droppedCount++;
     }
 
-    this.queue.push({ name, serialized, schema });
+    this.queue.push({ name, serialized, schema, opts });
 
     // Flush immediately if we've hit the export batch size
     if (this.queue.length >= this.maxExportBatchSize) {
@@ -169,7 +170,7 @@ export class BatchProcessor {
     if (obs.schema) {
       const result = obs.schema.safeParse(JSON.parse(obs.serialized));
       if (result.success) {
-        await storage.incrConform(obs.name, obs.serialized);
+        await storage.incrConform(obs.name, obs.serialized, obs.opts);
       } else {
         const errors = result.error.issues
           .map((i) => {
@@ -177,11 +178,11 @@ export class BatchProcessor {
             return `${path}: ${i.message}`;
           })
           .join("; ");
-        await storage.incrViolate(obs.name, obs.serialized, errors);
+        await storage.incrViolate(obs.name, obs.serialized, errors, obs.opts);
         await storage.addViolation(obs.name, obs.serialized);
       }
     } else {
-      await storage.incrViolate(obs.name, obs.serialized, "no schema defined");
+      await storage.incrViolate(obs.name, obs.serialized, "no schema defined", obs.opts);
       await storage.addViolation(obs.name, obs.serialized);
     }
   }

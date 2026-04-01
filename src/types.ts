@@ -37,6 +37,8 @@ export interface ProgressiveConfig {
   amplitudeEventName?: string;
 }
 
+export type ProgressiveOpts = Record<string, string>;
+
 export interface ProgressiveSchema {
   parse(input: unknown): unknown;
 }
@@ -45,8 +47,8 @@ export interface StorageBackend {
   addName(name: string): void | Promise<void>;
   addSample(name: string, sample: string): void | Promise<void>;
   addViolation(name: string, violation: string): void | Promise<void>;
-  incrConform(name: string, sample?: string): void | Promise<void>;
-  incrViolate(name: string, sample?: string, errors?: string): void | Promise<void>;
+  incrConform(name: string, sample?: string, opts?: ProgressiveOpts): void | Promise<void>;
+  incrViolate(name: string, sample?: string, errors?: string, opts?: ProgressiveOpts): void | Promise<void>;
   getNames(): string[] | Promise<string[]>;
   getSamples(name: string): string[] | Promise<string[]>;
   getViolations(name: string, limit: number): string[] | Promise<string[]>;
