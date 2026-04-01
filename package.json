@@ -1,6 +1,6 @@
 {
   "name": "progressive-zod",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Runtime type observability for TypeScript — progressively replace `any` with real Zod schemas",
   "type": "module",
   "main": "dist/index.cjs",
